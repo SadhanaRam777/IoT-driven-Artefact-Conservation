@@ -1,0 +1,64 @@
+RFID Reader Code
+#include <SoftwareSerial.h> //This line includes the SoftwareSerial library, which allows you to
+create a virtual serial port on digital pins other than the hardware serial pins (usually 0 and 1).
+// Define the RX and TX pins - These lines define the digital pins used for RX (Receive) and TX
+(Transmit) connections to the RFID reader.
+int RXPin = 1; // Replace with the actual RX pin (D2 - Yellow)
+int TXPin = 2; // Replace with the actual TX pin (D3 - White)
+SoftwareSerial RFID(RXPin, TXPin); // RX, TX - This line initializes a SoftwareSerial object
+named RFID with the specified RX and TX pins. This allows communication with the RFID
+module using these virtual serial pins.
+void setup() { // The setup() function is called once when the Arduino starts. It initializes the
+hardware and software serial communication.
+Serial.begin(9600); // Serial.begin(9600) initiates the hardware serial port for communication with
+the computer.
+RFID.begin(9600); // initializes the software serial port for communication with the RFID module.
+Serial.println("RFID Reader Test"); // prints a message to the serial monitor, indicating that the
+RFID reader is being tested.
+}
+void loop() { //The loop() function is called repeatedly. Inside this loop, it checks if there is data
+available on the RFID module using RFID.available()
+if (RFID.available() > 0) { //If data is available
+char input = RFID.read(); // it reads a character from the RFID module using RFID.read()
+Serial.print(input); // prints it to the serial monitor using Serial.print(input)
+}
+}
+RFID Tag validation Code
+#include <SoftwareSerial.h>
+SoftwareSerial RFID(1, 2);
+//String text;
+String CardNumber = "20000BC313FC"; // This line declares a String variable CardNumber and
+assigns a predefined RFID card number to it.
+void check(String text) {
+text = text.substring(1, 13); // Extract relevant characters from the scanned data (1 to 12)
+Serial.println("Card ID : " + text);
+Serial.println("Access ID : " + CardNumber);
+if (text.equals(CardNumber)) { // compares them with the predefined CardNumber
+Serial.println("Access accepted");
+} else {
+Serial.println("Access denied");
+}
+delay(2000);
+Serial.println(" ");
+Serial.println("Bring your RFID card closer …");
+}
+void setup() { // The setup() function is called once when the Arduino starts. It initializes the
+serial communication with the computer and with the RFID module. It also prints an initial
+message to the serial monitor.
+Serial.begin(9600);
+RFID.begin(9600);
+Serial.println("Bring your RFID Card Closer...");
+}
+char data;
+void loop() {
+String text = " "; // Clear the text variable at the beginning of each loop iteration // The loop()
+function is called repeatedly. It clears the text variable and then enters a loop where it reads
+characters from the RFID module and appends them to the text variable until no more characters
+are available. After exiting the loop, it calls the check function with the collected RFID data for
+processing.
+while (RFID.available() > 0) {
+data = RFID.read();
+text += data;
+}
+check(text);
+}
