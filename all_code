@@ -1,0 +1,703 @@
+DHT20 Humidity Sensor
+#include "DHT20.h"
+DHT20 DHT;
+uint8_t count = 0;
+void setup()
+{
+Serial.begin(115200);
+Serial.println(__FILE__);
+Serial.print("DHT20 LIBRARY VERSION: ");
+Serial.println(DHT20_LIB_VERSION);
+Serial.println();
+Wire.begin();
+DHT.begin(); // ESP32 default pins 21 22
+delay(1000);
+void loop()
+}
+{
+if (millis() - DHT.lastRead() >= 1000)
+{
+// Read data from DHT20 sensor
+uint32_t start = micros();
+int status = DHT.read();
+uint32_t stop = micros();
+// Print sensor readings and status
+if ((count % 10) == 0)
+{
+count = 0;
+Serial.println();
+Serial.println("Type\tHumidity (%)\tTemp (°C)\tTime (µs)\tStatus");
+}
+count++;
+float humidity = DHT.getHumidity();
+float temperature = DHT.getTemperature();
+Serial.print("DHT20 \t");
+Serial.print(humidity, 1);
+Serial.print("\t\t");
+Serial.print(temperature, 1);
+Serial.print("\t\t");
+Serial.print(stop - start);
+Serial.print("\t\t");
+// Print status based on the value of the 'status' variable
+switch (status)
+{
+// Cases for different status values
+}
+Serial.print("\n");
+// Check temperature and humidity thresholds
+float temperatureThreshold1 = 20.0; // Set your temperature threshold
+float humidityThreshold1 = 40.0; // Set your humidity threshold
+if (temperature < temperatureThreshold1)
+{
+Serial.println("Temperature is less than threshold!");
+// Your action for exceeding temperature threshold goes here
+}
+if (humidity < humidityThreshold1)
+{
+Serial.println("Humidity is less than threshold!");
+// Your action for exceeding humidity threshold goes here
+}
+// Check temperature and humidity thresholds
+float temperatureThreshold2 = 22.0; // Set your temperature threshold
+float humidityThreshold2 = 60.0; // Set your humidity threshold
+if (temperature > temperatureThreshold2)
+{
+Serial.println("Temperature exceeds threshold!");
+// Your action for exceeding temperature threshold goes here
+if (humidity > humidityThreshold2)
+}
+{
+Serial.println("Humidity exceeds threshold!");
+// Your action for exceeding humidity threshold goes here
+}
+}
+}
+Individual Sensor Board Code
+#include <WiFi.h>
+#include <esp_now.h>
+/* Read Temperature and Light Sensor*/
+#include <stdint.h>
+#define TempPin 1 //GPIO pin, check the pin number an dfunction of your board
+#define LightPin 2
+// Replace with the MAC address of the receiver ESP32S3 board
+uint8_t broadcastAddress[] = {0x34, 0x85, 0x18, 0xAC, 0xC7, 0x60}; //34:85:18:AC:B4:2C Mac
+Address for Board 24a
+// Structure example to send data
+// Must match the receiver structure
+typedef struct struct_message {
+// char a[32];
+int id;
+float b;
+float c;
+// uint8_t crc; //CRC for error checking
+// bool d;
+} struct_message;
+/*------------------ CRC-8 Calculation-----------------------*/
+// CRC-8 lookup table for polynomial 0x8C (reverse of 0x31)
+const uint8_t crc8_table[256] = {
+0x00, 0x8C, 0x31, 0xBD, 0x45, 0xC9, 0x74, 0xF8, 0x8A, 0x06, 0xBB, 0x37, 0xCF, 0x43,
+0xFE, 0x72,
+0x29, 0xA5, 0x18, 0x94, 0x6C, 0xE0, 0x5D, 0xD1, 0xA3, 0x2F, 0x92, 0x1E, 0xE6, 0x6A,
+0xD7, 0x5B,
+0x52, 0xDE, 0x63, 0xEF, 0x17, 0x9B, 0x26, 0xAA, 0xD8, 0x54, 0xE9, 0x65, 0x9D, 0x11,
+0xAC, 0x20,
+0x7B, 0xF7, 0x4A, 0xC6, 0x3E, 0xB2, 0x0F, 0x83, 0xF1, 0x7D, 0xC0, 0x4C, 0xB4, 0x38,
+0x85, 0x09,
+0xA4, 0x28, 0x95, 0x19, 0xE1, 0x6D, 0xD0, 0x5C, 0x2E, 0xA2, 0x1F, 0x93, 0x6B, 0xE7,
+0x5A, 0xD6,
+0x8D, 0x01, 0xBC, 0x30, 0xC8, 0x44, 0xF9, 0x75, 0x07, 0x8B, 0x36, 0xBA, 0x42, 0xCE, 0x73,
+0xFF,
+0xF6, 0x7A, 0xC7, 0x4B, 0xB3, 0x3F, 0x82, 0x0E, 0x7C, 0xF0, 0x4D, 0xC1, 0x39, 0xB5,
+0x08, 0x84,
+0xDF, 0x53, 0xEE, 0x62, 0x9A, 0x16, 0xAB, 0x27, 0x55, 0xD9, 0x64, 0xE8, 0x10, 0x9C, 0x21,
+0xAD,
+0x91, 0x1D, 0xA0, 0x2C, 0xD4, 0x58, 0xE5, 0x69, 0x1B, 0x97, 0x2A, 0xA6, 0x5E, 0xD2,
+0x6F, 0xE3,
+0xB8, 0x34, 0x89, 0x05, 0xFD, 0x71, 0xCC, 0x40, 0x32, 0xBE, 0x03, 0x8F, 0x77, 0xFB, 0x46,
+0xCA,
+0xC3, 0x4F, 0xF2, 0x7E, 0x86, 0x0A, 0xB7, 0x3B, 0x49, 0xC5, 0x78, 0xF4, 0x0C, 0x80, 0x3D,
+0xB1,
+0xEA, 0x66, 0xDB, 0x57, 0xAF, 0x23, 0x9E, 0x12, 0x60, 0xEC, 0x51, 0xDD, 0x25, 0xA9,
+0x14, 0x98,
+0x21, 0xAD, 0x10, 0x9C, 0x64, 0xE8, 0x55, 0xD9, 0xAB, 0x27, 0x9A, 0x16, 0xEE, 0x62,
+0xDF, 0x53,
+0x08, 0x84, 0x39, 0xB5, 0x4D, 0xC1, 0x7C, 0xF0, 0x82, 0x0E, 0xB3, 0x3F, 0xC7, 0x4B, 0xF6,
+0x7A,
+0x73, 0xFF, 0x42, 0xCE, 0x36, 0xBA, 0x07, 0x8B, 0xF9, 0x75, 0xC8, 0x44, 0xBC, 0x30,
+0x8D, 0x01,
+0x5A, 0xD6, 0x6B, 0xE7, 0x1F, 0x93, 0x2E, 0xA2, 0xD0, 0x5C, 0xE1, 0x6D, 0x95, 0x19,
+0xA4, 0x28
+};
+// Function to calculate CRC-8
+uint8_t calculateCRC8(const void* data, size_t length) {
+uint8_t crc = 0;
+uint8_t* buffer = (uint8_t*)data;
+for (size_t i = 0; i < length; i++) {
+crc = crc8_table[crc ^ buffer[i]];
+}
+return crc;
+}
+// Create a struct_message called myData
+struct_message myData;
+esp_now_peer_info_t peerInfo;
+// callback when data is sent
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+Serial.print("\r\nLast Packet Send Status:\t");
+Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+}
+void setup() {
+// Init Serial Monitor
+Serial.begin(115200);
+pinMode(TempPin,INPUT);
+pinMode(LightPin,INPUT);
+// Set device as a Wi-Fi Station
+WiFi.mode(WIFI_STA);
+// Init ESP-NOW
+if (esp_now_init() != ESP_OK) {
+Serial.println("Error initializing ESP-NOW");
+return;
+}
+// Once ESPNow is successfully Init, we will register for Send CB to
+// get the status of Trasnmitted packet
+esp_now_register_send_cb(OnDataSent);
+// Register peer
+memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+peerInfo.channel = 0;
+peerInfo.encrypt = false;
+// Add peer
+if (esp_now_add_peer(&peerInfo) != ESP_OK){
+Serial.println("Failed to add peer");
+return;
+}
+}
+void loop() {
+// Set values to send
+// Reading temperature or humidity takes about 250 milliseconds!
+int sensorValue_tm = analogRead(TempPin);
+int sensorValue_op = analogRead(LightPin);
+// Convert the analog reading ADC:12bit (which goes from 0 - 4095) to a voltage (0 - 5V):
+float voltage_tm = sensorValue_tm * (3.3 / 4096.0);
+float voltage_op = sensorValue_op * (3.3 / 4096.0);
+float temp = (-26.312* voltage_tm ) + 72.839;
+float lux = 1.1705 * exp(0.0008 * voltage_op);
+// s1;trcpy(myData.a, "This is Sender1-59A ");
+myData.id=2;
+myData.b = voltage_tm;
+myData.c = voltage_op;
+// Calculate CRC
+uint8_t CRC =calculateCRC8(&myData, sizeof(myData));
+// Send data including CRC using ESP-NOW
+uint8_t dataToSend[sizeof(myData)+1];
+memcpy(dataToSend,&myData,sizeof(myData));
+dataToSend[sizeof(myData)] = CRC;
+// Send message via ESP-NOW
+esp_err_t result = esp_now_send(broadcastAddress, dataToSend, sizeof(dataToSend));
+if (result == ESP_OK) {
+Serial.print(F(" Temperature voltage: "));
+Serial.print(voltage_tm);
+Serial.print(F("V Light voltage: "));
+Serial.print(voltage_op);
+Serial.print(F("V "));
+Serial.println(" Sender 2: Sent with success");
+Serial.print(" Calculated CRC: ");
+Serial.println(dataToSend[sizeof(myData)]);
+}
+else {
+Serial.println("Error sending the data");
+}
+delay(3000);
+}
+Dust and Humidity Sensors integrated together with CRC - Slave A
+#include "DHT20.h"
+#include <WiFi.h>
+#include <esp_now.h>
+#include <stdint.h>
+DHT20 DHT;
+uint8_t count = 0;
+int pin = 8; //dust sensor GPIO pin 8
+unsigned long duration;
+unsigned long starttime;
+unsigned long sampletime_ms = 4000; // sample 20s;
+unsigned long lowpulseoccupancy = 0;
+float ratio = 0;
+float concentration = 0;
+int threshold = 500; // Set your threshold value
+// Replace with the MAC address of the receiver ESP32S3 board
+uint8_t broadcastAddress[] = {0x34, 0x85, 0x18, 0x91, 0x30, 0xA4};
+// Structure example to send data
+// Must match the receiver structure
+typedef struct struct_message {
+int id;
+float b;
+float c;
+float a;
+} struct_message;
+// CRC-8 lookup table for polynomial 0x8C (reverse of 0x31)
+const uint8_t crc8_table[256] = {
+0x00, 0x8C, 0x94, 0x18, 0xA4, 0x28, 0x30, 0xBC, 0xC4, 0x48, 0x50, 0xDC, 0x60, 0xEC, 0xF4,
+0x78,
+0x04, 0x88, 0x90, 0x1C, 0xA0, 0x2C, 0x34, 0xB8, 0xC0, 0x4C, 0x54, 0xD8, 0x64, 0xE8, 0xF0,
+0x7C,
+0x08, 0x84, 0x9C, 0x10, 0xAC, 0x20, 0x38, 0xB4, 0xCC, 0x40, 0x58, 0xD4, 0x68, 0xE4, 0xFC,
+0x70,
+0x0C, 0x80, 0x98, 0x14, 0xA8, 0x24, 0x3C, 0xB0, 0xC8, 0x44, 0x5C, 0xD0, 0x6C, 0xE0, 0xF8,
+0x74,
+0x10, 0x9C, 0x84, 0x08, 0xB4, 0x38, 0x20, 0xAC, 0xD4, 0x58, 0x40, 0xCC, 0x70, 0xFC, 0xE4,
+0x68,
+0x14, 0x98, 0x80, 0x0C, 0xB0, 0x3C, 0x24, 0xA8, 0xD0, 0x5C, 0x44, 0xC8, 0x74, 0xF8, 0xE0,
+0x6C,
+0x18, 0x94, 0x8C, 0x00, 0xBC, 0x30, 0x28, 0xA4, 0xDC, 0x50, 0x48, 0xC4, 0x78, 0xF4, 0xEC,
+0x60,
+0x1C, 0x90, 0x88, 0x04, 0xB8, 0x34, 0x2C, 0xA0, 0xD8, 0x54, 0x4C, 0xC0, 0x7C, 0xF0, 0xE8,
+0x64,
+0x20, 0xAC, 0xB4, 0x38, 0x84, 0x08, 0x10, 0x9C, 0xE4, 0x68, 0x70, 0xFC, 0x40, 0xCC, 0xD4,
+0x58,
+0x24, 0xA8, 0xB0, 0x3C, 0x80, 0x0C, 0x14, 0x98, 0xE0, 0x6C, 0x74, 0xF8, 0x44, 0xC8, 0xD0,
+0x5C,
+0x28, 0xA4, 0xBC, 0x30, 0x8C, 0x00, 0x18, 0x94, 0xEC, 0x60, 0x78, 0xF4, 0x48, 0xC4, 0xDC,
+0x50,
+0x2C, 0xA0, 0xB8, 0x34, 0x88, 0x04, 0x1C, 0x90, 0xE8, 0x64, 0x7C, 0xF0, 0x4C, 0xC0, 0xD8,
+0x54,
+0x30, 0xBC, 0xA4, 0x28, 0x94, 0x18, 0x00, 0x8C, 0xF4, 0x78, 0x60, 0xEC, 0x50, 0xDC, 0xC4,
+0x48,
+0x34, 0xB8, 0xA0, 0x2C, 0x90, 0x1C, 0x04, 0x88, 0xF0, 0x7C, 0x64, 0xE8, 0x54, 0xD8, 0xC0,
+0x4C,
+0x38, 0xB4, 0xAC, 0x20, 0x9C, 0x10, 0x08, 0x84, 0xFC, 0x70, 0x68, 0xE4, 0x58, 0xD4, 0xCC,
+0x40,
+0x3C, 0xB0, 0xA8, 0x24, 0x98, 0x14, 0x0C, 0x80, 0xF8, 0x74, 0x6C, 0xE0, 0x5C, 0xD0, 0xC8,
+0x44};
+// Create a struct_message called myData
+struct_message myData;
+esp_now_peer_info_t peerInfo;
+// callback when data is sent
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
+{
+Serial.print("\r\nLast Packet Send Status:\t");
+Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+}
+void setup()
+{
+// Init Serial Monitor
+Serial.begin(115200);
+Serial.print(F("DHT22 Test!"));
+// Set device as a Wi-Fi Station
+WiFi.mode(WIFI_STA);
+pinMode(pin, INPUT);
+Wire.begin();
+DHT.begin();
+starttime = millis(); // get the current time;
+// Init ESP-NOW
+if (esp_now_init() != ESP_OK)
+{
+Serial.println("Error initializing ESP-NOW");
+return;
+}
+// Once ESPNow is successfully Init, we will register for Send CB to
+// get the status of Transmitted packet
+esp_now_register_send_cb(OnDataSent);
+// Register peer
+memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+peerInfo.channel = 0;
+peerInfo.encrypt = false;
+// Add peer
+if (esp_now_add_peer(&peerInfo) != ESP_OK)
+{
+Serial.println("Failed to add peer");
+return;
+}
+}
+void getTemp()
+{
+uint32_t start = micros();
+int status = DHT.read();
+uint32_t stop = micros();
+// Print sensor readings and status
+if ((count % 10) == 0)
+{
+count = 0;
+Serial.println();
+Serial.println("Type\tHumidity (%)\tTemp (°C)\tTime (µs)\tStatus");
+}
+count++;
+float humidity = DHT.getHumidity();
+float temperature = DHT.getTemperature();
+Serial.print("DHT20 \t");
+Serial.print(humidity, 1);
+Serial.print("\t\t");
+Serial.print(temperature, 1);
+Serial.print("\t\t");
+Serial.print(stop - start);
+Serial.print("\t\t");
+// Print status based on the value of the 'status' variable
+switch (status)
+// Cases for different status values
+{
+}
+Serial.print("\n");
+// Check temperature and humidity thresholds
+float temperatureThreshold1 = 20.0;
+float humidityThreshold1 = 40.0;
+if (temperature < temperatureThreshold1)
+{
+Serial.println("Temperature is less than threshold!");
+// Your action for exceeding temperature threshold goes here
+}
+if (humidity < humidityThreshold1)
+{
+Serial.println("Humidity is less than threshold!");
+// Your action for exceeding humidity threshold goes here
+}
+// Check temperature and humidity thresholds
+float temperatureThreshold2 = 22.0;
+float humidityThreshold2 = 60.0;
+if (temperature > temperatureThreshold2)
+{
+Serial.println("Temperature is more than threshold!");
+// Your action for exceeding temperature threshold goes here
+}
+if (humidity > humidityThreshold2)
+{
+Serial.println("Humidity is more than threshold!");
+// Your action for exceeding humidity threshold goes here
+}
+}
+void loop()
+{
+// Set values to send
+delay(2500);
+myData.id = 1; // Board ID
+myData.a = DHT.getTemperature();
+myData.b = DHT.getHumidity();
+myData.c = 0.0;
+// Calculate CRC directly in the loop
+uint8_t CRC = 0;
+uint8_t *dataPtr = (uint8_t *)&myData;
+for (size_t i = 0; i < sizeof(myData); i++)
+{
+CRC = crc8_table[CRC ^ dataPtr[i]];
+}
+// Send data including CRC using ESP-NOW
+uint8_t dataToSend[sizeof(myData) + 1];
+memcpy(dataToSend, &myData, sizeof(myData));
+dataToSend[sizeof(myData)] = CRC;
+// Print CRC value
+Serial.print("CRC: ");
+Serial.println(CRC, HEX); // Print CRC value in hexadecimal
+// Send message via ESP-NOW
+esp_err_t result = esp_now_send(broadcastAddress, dataToSend, sizeof(dataToSend));
+if (result == ESP_OK)
+{
+Serial.print(F("Humidity: "));
+Serial.print(F("% Temperature: "));
+Serial.print(F("C "));
+Serial.print(F("Concentration: "));
+Serial.println(" Sent with success");
+}
+else
+{
+Serial.println("Error sending the data");
+}
+duration = pulseIn(pin, LOW);
+lowpulseoccupancy = lowpulseoccupancy + duration;
+getTemp();
+if ((millis() - starttime) > sampletime_ms)
+{
+ratio = lowpulseoccupancy / (sampletime_ms * 10.0);
+concentration = 1.1 * pow(ratio, 3) - 3.8 * pow(ratio, 2) + 520 * ratio + 0.62;
+Serial.print("Concentration: ");
+Serial.println(concentration);
+if (concentration > threshold)
+{
+Serial.println("Alert! Dust concentration exceeds threshold.");
+}
+lowpulseoccupancy = 0;
+starttime = millis();
+}
+}
+delay(2000);
+RFID and Individual sensor Board Integration - Slave- B Code
+#include <WiFi.h>
+#include <esp_now.h>
+#include <SoftwareSerial.h>
+SoftwareSerial RFID(1, 2);
+String CardNumber = "20000BC313FB"; // Predefined RFID card number
+#define TempPin 3 // GPIO pin for temperature sensor
+#define LightPin 4 // GPIO pin for light sensor
+uint8_t broadcastAddress[] = {0x35, 0x85, 0x18, 0xAC, 0xC7, 0xB4}; // Replace with the MAC
+address of the receiver ESP32
+typedef struct struct_message {
+int id;
+float temperature;
+float light;
+String rfid; // Change from char to String
+} struct_message;
+struct_message myData;
+// CRC-8 lookup table for polynomial 0x8C (reverse of 0x31)
+const uint8_t crc8_table[256] = {
+// ... (unchanged)
+0x00, 0x8C, 0x31, 0xBD, 0x45, 0xC9, 0x74, 0xF8, 0x8A, 0x06, 0xBB, 0x37, 0xCF, 0x43, 0xFE,
+0x72,
+0x29, 0xA5, 0x18, 0x94, 0x6C, 0xE0, 0x5D, 0xD1, 0xA3, 0x2F, 0x92, 0x1E, 0xE6, 0x6A,
+0xD7, 0x5B,
+0x52, 0xDE, 0x63, 0xEF, 0x17, 0x9B, 0x26, 0xAA, 0xD8, 0x54, 0xE9, 0x65, 0x9D, 0x11,
+0xAC, 0x20,
+0x7B, 0xF7, 0x4A, 0xC6, 0x3E, 0xB2, 0x0F, 0x83, 0xF1, 0x7D, 0xC0, 0x4C, 0xB4, 0x38,
+0x85, 0x09,
+0xA4, 0x28, 0x95, 0x19, 0xE1, 0x6D, 0xD0, 0x5C, 0x2E, 0xA2, 0x1F, 0x93, 0x6B, 0xE7,
+0x5A, 0xD6,
+0x8D, 0x01, 0xBC, 0x30, 0xC8, 0x44, 0xF9, 0x75, 0x07, 0x8B, 0x36, 0xBA, 0x42, 0xCE, 0x73,
+0xFF,
+0xF6, 0x7A, 0xC7, 0x4B, 0xB3, 0x3F, 0x82, 0x0E, 0x7C, 0xF0, 0x4D, 0xC1, 0x39, 0xB5,
+0x08, 0x84,
+0xDF, 0x53, 0xEE, 0x62, 0x9A, 0x16, 0xAB, 0x27, 0x55, 0xD9, 0x64, 0xE8, 0x10, 0x9C, 0x21,
+0xAD,
+0x91, 0x1D, 0xA0, 0x2C, 0xD4, 0x58, 0xE5, 0x69, 0x1B, 0x97, 0x2A, 0xA6, 0x5E, 0xD2,
+0x6F, 0xE3,
+0xB8, 0x34, 0x89, 0x05, 0xFD, 0x71, 0xCC, 0x40, 0x32, 0xBE, 0x03, 0x8F, 0x77, 0xFB, 0x46,
+0xCA,
+0xC3, 0x4F, 0xF2, 0x7E, 0x86, 0x0A, 0xB7, 0x3B, 0x49, 0xC5, 0x78, 0xF4, 0x0C, 0x80, 0x3D,
+0xB1,
+0xEA, 0x66, 0xDB, 0x57, 0xAF, 0x23, 0x9E, 0x12, 0x60, 0xEC, 0x51, 0xDD, 0x25, 0xA9,
+0x14, 0x98,
+0x21, 0xAD, 0x10, 0x9C, 0x64, 0xE8, 0x55, 0xD9, 0xAB, 0x27, 0x9A, 0x16, 0xEE, 0x62,
+0xDF, 0x53,
+0x08, 0x84, 0x39, 0xB5, 0x4D, 0xC1, 0x7C, 0xF0, 0x82, 0x0E, 0xB3, 0x3F, 0xC7, 0x4B, 0xF6,
+0x7A,
+0x73, 0xFF, 0x42, 0xCE, 0x36, 0xBA, 0x07, 0x8B, 0xF9, 0x75, 0xC8, 0x44, 0xBC, 0x30,
+0x8D, 0x01,
+0x5A, 0xD6, 0x6B, 0xE7, 0x1F, 0x93, 0x2E, 0xA2, 0xD0, 0x5C, 0xE1, 0x6D, 0x95, 0x19,
+0xA4, 0x28
+};
+// Function to calculate CRC-8
+uint8_t calculateCRC8(const void* data, size_t length) {
+uint8_t crc = 0;
+uint8_t* buffer = (uint8_t*)data;
+for (size_t i = 0; i < length; i++) {
+crc = crc8_table[crc ^ buffer[i]];
+}
+return crc;
+}
+esp_now_peer_info_t peerInfo;
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+Serial.print("\r\nLast Packet Send Status:\t");
+Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+}
+void check(String text) {
+text = text.substring(1, 13); // Extract relevant characters from the scanned data (1 to 12)
+Serial.println("Card ID : " + text);
+Serial.println("Access ID : " + CardNumber);
+String rfid; // Declare rfid as a String
+if (text.equals(CardNumber)) {
+rfid = "Accepted";
+} else {
+rfid = "Denied";
+}
+delay(2000);
+Serial.println("RFID: " + rfid);
+}
+void setup() {
+Serial.begin(115200);
+RFID.begin(9600);
+WiFi.mode(WIFI_STA);
+if (esp_now_init() != ESP_OK) {
+Serial.println("Error initializing ESP-NOW");
+return;
+}
+esp_now_register_send_cb(OnDataSent);
+memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+peerInfo.channel = 0;
+peerInfo.encrypt = false;
+if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+Serial.println("Failed to add peer");
+return;
+}
+pinMode(TempPin, INPUT);
+pinMode(LightPin, INPUT);
+}
+void loop() {
+String text = "";
+while (RFID.available() > 0) {
+char data = RFID.read();
+text += data;
+}
+check(text);
+int sensorValue_tm = analogRead(TempPin);
+int sensorValue_op = analogRead(LightPin);
+float voltage_tm = sensorValue_tm * (3.3 / 4096.0);
+float voltage_op = sensorValue_op * (3.3 / 4096.0);
+myData.id = 2;
+myData.temperature = voltage_tm;
+myData.light = voltage_op;
+myData.rfid = ""; // Initialize rfid as an empty string
+// Calculate CRC
+uint8_t CRC = calculateCRC8(&myData, sizeof(myData));
+Serial.print(F(" Temperature voltage: "));
+Serial.print(voltage_tm);
+Serial.print(F("V Light voltage: "));
+Serial.print(voltage_op);
+Serial.print(F("V "));
+Serial.println(" Sender 2: Sent with success");
+Serial.print("RFID: " + myData.rfid);
+Serial.print(" Calculated CRC: ");
+Serial.println(CRC);
+uint8_t dataToSend[sizeof(myData) + 1];
+memcpy(dataToSend, &myData, sizeof(myData));
+dataToSend[sizeof(myData)] = CRC;
+esp_err_t result = esp_now_send(broadcastAddress, dataToSend, sizeof(dataToSend));
+if (result == ESP_OK) {
+Serial.print(" Sender 2: Sent with success");
+Serial.print(" Calculated CRC: ");
+Serial.println(dataToSend[sizeof(myData)]);
+} else {
+Serial.println("Error sending the data");
+}
+delay(3000);
+}
+//Sender has context menu
+ThingSpeak Code
+#include <HardwareSerial.h>
+#include <WiFi.h>
+#include "ThingSpeak.h"
+const char* ssid="SENGEEE8092GW"; //Type wifi name
+const char* password="pin-9201.double";//Type wifi password
+HardwareSerial SerialPort(2); //use UART2
+#define UART_TX_PIN 43
+#define UART_RX_PIN 44
+#define BAUD_RATE 115200
+int led = 13;
+typedef struct UART_message {
+int id;
+float b;
+float c;
+uint8_t CRC_checksum; //CRC for error checking
+} UART_message;
+WiFiClient client;
+unsigned long myChannelNumber = 1; //The channel number in ThingSpeak (e.g.Channel 1)
+const char* myWriteAPIKey = "9SIOLGEEJAB2EYP9"; //Write API Key, can be obtained from
+ThingSpeak,differenct channel has different API keyTimer variables
+unsigned long lastTime = 0;
+unsigned long timerDelay = 20000;
+void setup() {
+Serial.begin(BAUD_RATE);
+SerialPort.begin(BAUD_RATE, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
+WiFi.mode(WIFI_STA);
+WiFi.begin(ssid, password);
+if(WiFi.status() != WL_CONNECTED){
+Serial.print("Attempting to connect Wi-Fi");
+while(WiFi.status() != WL_CONNECTED){
+WiFi.begin(ssid, password);
+delay(5000);
+}
+Serial.println("\nWiFi Connected.");
+}
+Serial.print("RSSI: ");
+Serial.println(WiFi.RSSI());
+pinMode(led,OUTPUT);
+ThingSpeak.begin(client); // Initialize ThingSpeak
+delay(1000);
+}
+void loop() {
+// Variable definition for uploading data to ThingSpeak
+float humidity;
+float temperature;
+float TempVoltage;
+float LightVoltage;
+float LightDensity;
+// Serial Port Scanning
+if (SerialPort.available()) {
+// String message = SerialPort.readString();
+// Serial.println("Received message: " + message);
+size_t byteSize = sizeof(UART_message);
+byte* byteArray = new byte[byteSize];
+SerialPort.read(byteArray, byteSize);
+// Deserialize the byte array back into the structure
+UART_message UARTReceivedData;
+memcpy(&UARTReceivedData, byteArray, byteSize);
+/*--------Process different types of data----------*/
+switch(UARTReceivedData.id){
+case 1:
+// Print the received structure data and check the data valid or not
+if (UARTReceivedData.b > 0 && (UARTReceivedData.c > -50 &&
+UARTReceivedData.c < 50)){
+Serial.print("Received from Board ID: ");
+Serial.println(UARTReceivedData.id);
+Serial.print(" Humidity: ");
+Serial.print(UARTReceivedData.b); // b is linked to humidity
+Serial.println(" % ");
+Serial.print(" Temperature: "); // c to temperature
+Serial.print(UARTReceivedData.c);
+Serial.println(" C ");
+Serial.print(" CRC = "); // CRC=1 means data transmission right
+Serial.println(UARTReceivedData.CRC_checksum);
+humidity=UARTReceivedData.b;
+temperature=UARTReceivedData.c;
+ThingSpeak.setField(1, humidity);
+ThingSpeak.setField(2, temperature);
+}
+break;
+case 2:
+if (UARTReceivedData.b > 0 && UARTReceivedData.c > 0 ){
+Serial.print("Received from Board ID: ");
+Serial.println(UARTReceivedData.id);
+Serial.print(" Temperature voltage: ");
+Serial.print(UARTReceivedData.b); // b is linked to humidity
+Serial.println(" V ");
+Serial.print(" Light voltage: "); // c to temperature
+Serial.print(UARTReceivedData.c);
+Serial.println(" V ");
+Serial.print(" CRC = "); // CRC=1 means data transmission right
+Serial.println(UARTReceivedData.CRC_checksum);
+TempVoltage=UARTReceivedData.b;
+LightVoltage=UARTReceivedData.c;
+ThingSpeak.setField(1, TempVoltage);
+ThingSpeak.setField(2, LightVoltage);
+}
+break;
+default:
+if (UARTReceivedData.b > 0 ){
+Serial.print("Received from Board ID: ");
+Serial.println(UARTReceivedData.id);
+Serial.print(" TSL2591 Light Density: ");
+Serial.print(UARTReceivedData.b); // b is linked to light desnity
+Serial.println(" lux ");
+Serial.print(" CRC = "); // CRC=1 means data transmission right
+Serial.println(UARTReceivedData.CRC_checksum);
+LightDensity=UARTReceivedData.b;
+ThingSpeak.setField(5, LightDensity);
+}
+break;
+}
+digitalWrite(led, HIGH);
+delay(100);
+//ThingSpeak Data UIploading
+if ((millis() - lastTime) > timerDelay) {
+// Connect or reconnect to WiFi
+if(WiFi.status() != WL_CONNECTED){
+Serial.print("Attempting to connect");
+while(WiFi.status() != WL_CONNECTED){
+WiFi.begin(ssid, password);
+delay(5000);
+}
+Serial.println("\nConnected.");
+}
+// Get a new temperature reading
+// ThingSpeak.setField(1, humidity);
+// ThingSpeak.setField(2, temperature);
+// ThingSpeak.setField(3, TempVoltage);
+// ThingSpeak.setField(4, LightVoltage);
+// ThingSpeak.setField(5, LightDensity);
+// Write to ThingSpeak. There are up to 8 fields in a channel, allowing you to store up to 8
+different
+// pieces of information in a channel. Here, we write to field 1.
+int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+if(x == 200){
+Serial.println("Channel update successful.");
+}
+else{
+Serial.println("Problem updating channel. HTTP error code " + String(x));
+}
+lastTime = millis();
+}
+}
+digitalWrite(led, LOW);//digitalWrite(LED, HIGH);
+}
